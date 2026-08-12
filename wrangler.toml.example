@@ -1,0 +1,8 @@
+name = "pvhcc-coto-portal"
+compatibility_date = "2026-08-01"
+pages_build_output_dir = "."
+
+# Đặt secrets bằng Cloudflare Dashboard, KHÔNG commit giá trị thật:
+# GAS_API_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
+# GAS_API_SECRET=<giống Script Property PORTAL_API_SECRET>
+# REQUIRE_ACCESS=true

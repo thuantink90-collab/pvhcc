@@ -1,0 +1,15 @@
+function ss_(){return SpreadsheetApp.openById(PORTAL.SPREADSHEET_ID)}
+function sh_(name){const s=ss_().getSheetByName(name);if(!s)throw new Error('Chưa có sheet '+name+'. Hãy chạy setupPortalSheets().');return s}
+function rowsAsObjects_(sheet){const v=sheet.getDataRange().getValues();if(v.length<2)return[];const h=v[0].map(String);return v.slice(1).filter(r=>r.some(x=>x!==''&&x!==null)).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]])))}
+function listApps_(all){let a=rowsAsObjects_(sh_(PORTAL.SHEETS.APPS));if(!all)a=a.filter(x=>String(x.status||'ACTIVE').toUpperCase()==='ACTIVE');return a.map(x=>({...x,order:Number(x.order||999),featured:String(x.featured).toLowerCase()==='true'||x.featured===true}))}
+function getConfig_(){const a=rowsAsObjects_(sh_(PORTAL.SHEETS.CONFIG));const o={};a.forEach(x=>o[String(x.key)]=x.value);return o}
+function saveApp_(o,user){
+ const req=['id','name','audience','category'];req.forEach(k=>{if(!String(o[k]||'').trim())throw new Error('Thiếu '+k)}); const sheet=sh_(PORTAL.SHEETS.APPS), values=sheet.getDataRange().getValues(), headers=values[0].map(String), idCol=headers.indexOf('id'); if(idCol<0)throw new Error('Sheet Apps thiếu cột id');
+ const original=String(o.originalId||o.id).trim(), newId=String(o.id).trim(); let row=-1;for(let i=1;i<values.length;i++)if(String(values[i][idCol])===original){row=i+1;break}
+ if(row<0){for(let i=1;i<values.length;i++)if(String(values[i][idCol])===newId)throw new Error('Mã ứng dụng đã tồn tại');row=sheet.getLastRow()+1}
+ const data=headers.map(h=>{if(h==='updatedAt')return new Date();if(h==='updatedBy')return user;return o[h]!==undefined?o[h]:''}); sheet.getRange(row,1,1,headers.length).setValues([data]);audit_(user,row===sheet.getLastRow()?'CREATE_APP':'SAVE_APP',newId,JSON.stringify({name:o.name,audience:o.audience}))
+}
+function deleteApp_(id,user){const s=sh_(PORTAL.SHEETS.APPS),v=s.getDataRange().getValues(),h=v[0].map(String),c=h.indexOf('id');for(let i=1;i<v.length;i++)if(String(v[i][c])===id){s.deleteRow(i+1);audit_(user,'DELETE_APP',id,'');return}throw new Error('Không tìm thấy ứng dụng '+id)}
+function saveConfig_(o,user){const s=sh_(PORTAL.SHEETS.CONFIG),v=s.getDataRange().getValues(),h=v[0].map(String),kc=h.indexOf('key'),vc=h.indexOf('value');Object.keys(o).forEach(k=>{let row=-1;for(let i=1;i<v.length;i++)if(String(v[i][kc])===k){row=i+1;break}if(row<0){s.appendRow([k,o[k],new Date(),user])}else{s.getRange(row,vc+1).setValue(o[k]);if(h.indexOf('updatedAt')>=0)s.getRange(row,h.indexOf('updatedAt')+1).setValue(new Date());if(h.indexOf('updatedBy')>=0)s.getRange(row,h.indexOf('updatedBy')+1).setValue(user)}});audit_(user,'SAVE_CONFIG','Portal_Config',JSON.stringify(o))}
+function audit_(user,action,target,detail){sh_(PORTAL.SHEETS.AUDIT).appendRow([new Date(),user,action,target,detail])}
+function listAudit_(){const a=rowsAsObjects_(sh_(PORTAL.SHEETS.AUDIT));return a.slice(-200).reverse().map(x=>({time:x.time instanceof Date?Utilities.formatDate(x.time,Session.getScriptTimeZone(),'dd/MM/yyyy HH:mm:ss'):x.time,user:x.user,action:x.action,target:x.target,detail:x.detail}))}

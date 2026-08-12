@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b5fa5">
+  <title>Cổng dịch vụ và tiện ích số - Trung tâm PVHCC Cô Tô</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <div class="top-strip"></div>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand" role="button" tabindex="0" data-action="home">
+        <div class="brand-mark" aria-hidden="true">HC</div>
+        <div><div class="eyebrow">ĐẶC KHU CÔ TÔ</div><div class="brand-title">TRUNG TÂM PHỤC VỤ HÀNH CHÍNH CÔNG</div><div class="brand-subtitle">Cổng dịch vụ và tiện ích số</div></div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="homeBtn" title="Trang chủ" aria-label="Trang chủ">⌂</button>
+        <a class="outline-btn admin-link" href="/admin.html">Quản trị</a>
+        <button class="outline-btn" id="changeRoleBtn">Đổi vai trò</button>
+      </div>
+    </div>
+  </header>
+  <main id="app"><section class="page-shell"><div class="container"><div class="empty">Đang tải dữ liệu...</div></div></section></main>
+  <footer class="site-footer"><div class="container footer-grid"><div><strong>Trung tâm Phục vụ Hành chính công đặc khu Cô Tô</strong><br><span>Nền tảng điều phối các dịch vụ, tiện ích và hệ thống nghiệp vụ.</span></div><div class="footer-note">Portal 2.0 · Dữ liệu Google Sheet</div></div></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog id="protectedDialog" class="modal"><form method="dialog" class="modal-card"><button class="modal-close" value="cancel">×</button><div class="modal-icon">🔐</div><h2>Ứng dụng nội bộ</h2><p>Tiện ích này yêu cầu tài khoản cán bộ. Việc xác thực được thực hiện qua Cloudflare Access/SSO.</p><div class="modal-actions"><button class="secondary-btn" value="cancel">Đóng</button><button class="primary-btn" id="loginBtn" value="default">Đăng nhập</button></div></form></dialog>
+  <script src="/assets/app.js"></script>
+</body>
+</html>
