@@ -1,1 +1,1 @@
-window.HCCCOTO_API = "https://hcccoto-core-api.YOUR-ACCOUNT.workers.dev";
+window.HCCCOTO_API = "https://hcccoto-core-api.thuantink90.workers.dev";
