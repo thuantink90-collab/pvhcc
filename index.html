@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b5fa5">
+  <title>Cổng điều phối PVHCC Cô Tô 2.3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <div class="top-strip"></div>
+  <header class="site-header">
+    <div class="container header-inner portal-header-inner">
+      <div class="brand" role="button" tabindex="0" data-action="home">
+        <div class="brand-mark" aria-hidden="true">HC</div>
+        <div>
+          <div class="eyebrow">ĐẶC KHU CÔ TÔ</div>
+          <div class="brand-title">CỔNG ĐIỀU PHỐI DỊCH VỤ HÀNH CHÍNH CÔNG</div>
+          <div class="brand-subtitle">Trung tâm Phục vụ Hành chính công</div>
+        </div>
+      </div>
+      <div class="header-actions portal-actions">
+        <div class="clock-box" aria-label="Thời gian hiện tại">
+          <strong id="clockTime">--:--:--</strong>
+          <span id="clockDate">--/--/----</span>
+          <small>📍 Cô Tô, Quảng Ninh</small>
+        </div>
+        <a class="outline-btn admin-link" href="/admin">⚙ Quản trị</a>
+        <button class="outline-btn" id="changeRoleBtn">Đổi vai trò</button>
+        <button class="outline-btn dark-btn" id="darkModeBtn">◐ Dark mode</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app"><section class="page-shell"><div class="container"><div class="empty">Đang tải dữ liệu...</div></div></section></main>
+
+  <footer class="site-footer portal-footer">
+    <div class="container portal-footer-grid">
+      <div>
+        <div class="footer-brand">CỔNG ĐIỀU PHỐI PVHCC CÔ TÔ</div>
+        <p>Nền tảng tập trung dịch vụ công, tiện ích cho công dân và hệ thống nghiệp vụ dành cho cán bộ.</p>
+      </div>
+      <div>
+        <div class="footer-heading">THỐNG KÊ HỆ THỐNG</div>
+        <div class="footer-stat"><span>Tiện ích đang hoạt động:</span><strong id="footerAppCount">--</strong></div>
+        <div class="footer-stat"><span>Nhóm chức năng:</span><strong id="footerGroupCount">--</strong></div>
+      </div>
+      <div>
+        <div class="footer-heading">TRUY CẬP NHANH</div>
+        <button class="footer-link" id="footerChangeRole">⇄ Đổi vai trò sử dụng</button>
+        <a class="footer-link" href="/admin">⚙ Quản trị cổng điều phối</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Trung tâm Phục vụ Hành chính công đặc khu Cô Tô · Portal 2.3 · Dữ liệu Google Sheet</div>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog id="protectedDialog" class="modal">
+    <form method="dialog" class="modal-card">
+      <button class="modal-close" value="cancel">×</button>
+      <div class="modal-icon">🔐</div>
+      <h2>Ứng dụng nội bộ</h2>
+      <p>Tiện ích này yêu cầu tài khoản cán bộ. Việc xác thực sẽ được thực hiện qua lớp đăng nhập/SSO của hệ thống.</p>
+      <div class="modal-actions"><button class="secondary-btn" value="cancel">Đóng</button><button class="primary-btn" id="loginBtn" value="default">Đăng nhập</button></div>
+    </form>
+  </dialog>
+  <script src="/assets/app.js"></script>
+</body>
+</html>
