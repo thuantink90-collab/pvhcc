@@ -2,7 +2,7 @@
   const appEl = document.getElementById('app');
   const dlg = document.getElementById('protectedDialog');
   const toast = document.getElementById('toast');
-  let apps = [], cfg = {}, currentAudience = null, activeCategory = 'all', customizeMode = false;
+  let apps = [], cfg = {}, currentAudience = null, activeCategory = 'all', customizeMode = false, initialized = false, clockTimer = null;
 
   const storage = {
     getPins(){ try{return JSON.parse(localStorage.getItem('pvhcc_pins')||'[]')}catch{return[]} },
@@ -11,7 +11,9 @@
     setRole(v){localStorage.setItem('pvhcc_role',v)},
     clearRole(){localStorage.removeItem('pvhcc_role')},
     getDark(){return localStorage.getItem('pvhcc_dark')==='1'},
-    setDark(v){localStorage.setItem('pvhcc_dark',v?'1':'0')}
+    setDark(v){localStorage.setItem('pvhcc_dark',v?'1':'0')},
+    getBootstrap(){ try{return JSON.parse(localStorage.getItem('pvhcc_bootstrap_v1')||'null')}catch{return null} },
+    setBootstrap(v){ try{localStorage.setItem('pvhcc_bootstrap_v1',JSON.stringify({savedAt:Date.now(),data:v}))}catch(_){} }
   };
 
   const esc=(s='')=>String(s).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c]));
@@ -21,8 +23,7 @@
   async function api(path, options={}){
     const r=await fetch('/api/'+path,{
       ...options,
-      headers:{Accept:'application/json',...(options.headers||{})},
-      cache:'no-store'
+      headers:{Accept:'application/json',...(options.headers||{})}
     });
     const text=await r.text();
     let j;
@@ -34,26 +35,75 @@
     return j;
   }
 
-  async function loadData(){
+  function normalizeBootstrap(data){
+    if(!data || !Array.isArray(data.apps)) throw new Error('Dữ liệu bootstrap không hợp lệ');
+    return {
+      apps:data.apps.filter(x=>String(x.status||'ACTIVE').toUpperCase()==='ACTIVE'),
+      config:(data.config && typeof data.config==='object') ? data.config : {}
+    };
+  }
+
+  function applyBootstrap(data){
+    const n=normalizeBootstrap(data);
+    apps=n.apps;
+    cfg=n.config;
+    updateFooterStats();
+  }
+
+  async function fetchBootstrap(){
+    // Portal 2.4 ưu tiên 1 request duy nhất: apps + config.
+    // Nếu backend chưa kịp cập nhật route bootstrap thì tự động fallback về
+    // 2 endpoint cũ nhưng gọi song song, không gọi tuần tự.
     try{
-      // Apps là dữ liệu bắt buộc. Cấu hình là dữ liệu phụ: nếu config lỗi,
-      // Portal vẫn phải hoạt động với cấu hình mặc định.
-      const a=await api('apps');
-      if(!Array.isArray(a.data)) throw new Error('API /apps không trả về mảng data hợp lệ');
-      apps=a.data.filter(x=>String(x.status||'ACTIVE').toUpperCase()==='ACTIVE');
+      const b=await api('bootstrap');
+      if(!b.data || !Array.isArray(b.data.apps)) throw new Error('API /bootstrap không hợp lệ');
+      return normalizeBootstrap(b.data);
+    }catch(bootstrapError){
+      console.warn('Bootstrap API chưa sẵn sàng, dùng fallback song song:',bootstrapError);
+      const [ar,cr]=await Promise.allSettled([api('apps'),api('config')]);
+      if(ar.status!=='fulfilled' || !Array.isArray(ar.value.data)) throw bootstrapError;
+      return normalizeBootstrap({
+        apps:ar.value.data,
+        config:cr.status==='fulfilled' && cr.value.data && typeof cr.value.data==='object' ? cr.value.data : {}
+      });
+    }
+  }
 
+  function refreshVisibleUi(){
+    updateFooterStats();
+    if(!initialized) return;
+    if(currentAudience) renderDashboard();
+    else roleLanding();
+  }
+
+  async function loadData(){
+    const cached=storage.getBootstrap();
+    let usedCache=false;
+
+    // Hiển thị dữ liệu lần truy cập trước ngay lập tức (stale-while-revalidate).
+    if(cached && cached.data){
       try{
-        const c=await api('config');
-        cfg=(c && c.data && typeof c.data==='object') ? c.data : {};
-      }catch(configError){
-        console.warn('Không tải được Portal_Config, dùng cấu hình mặc định:',configError);
-        cfg={};
-      }
+        applyBootstrap(cached.data);
+        init();
+        usedCache=true;
+      }catch(_){ /* cache cũ/hỏng -> bỏ qua */ }
+    }
 
-      updateFooterStats();
-      init();
+    try{
+      const fresh=await fetchBootstrap();
+      const oldSig=JSON.stringify({apps,cfg});
+      applyBootstrap(fresh);
+      storage.setBootstrap(fresh);
+      const newSig=JSON.stringify({apps,cfg});
+      if(!initialized) init();
+      else if(oldSig!==newSig) refreshVisibleUi();
     }catch(e){
-      appEl.innerHTML=`<section class="page-shell"><div class="container"><div class="empty"><strong>Không tải được danh sách ứng dụng Portal.</strong><br>${esc(e.message)}<br><br>Kiểm tra <code>/api/apps</code>. Không cần thay đổi Google Sheet nếu endpoint này vẫn trả <code>{ok:true,data:[...]}</code>.</div></div></section>`;
+      if(usedCache){
+        console.warn('Không làm gián đoạn Portal vì đang có cache cục bộ:',e);
+        toastMsg('Đang dùng dữ liệu đã lưu gần nhất.');
+        return;
+      }
+      appEl.innerHTML=`<section class="page-shell"><div class="container"><div class="empty"><strong>Không tải được danh sách ứng dụng Portal.</strong><br>${esc(e.message)}<br><br>Kiểm tra <code>/api/bootstrap</code> hoặc <code>/api/apps</code>.</div></div></section>`;
     }
   }
 
@@ -238,8 +288,11 @@
   }
 
   function init(){
+    if(initialized) return;
+    initialized=true;
     setDark(storage.getDark());
-    updateClock(); setInterval(updateClock,1000);
+    updateClock();
+    if(!clockTimer) clockTimer=setInterval(updateClock,1000);
     document.getElementById('changeRoleBtn').onclick=()=>{storage.clearRole();customizeMode=false;roleLanding()};
     document.getElementById('footerChangeRole').onclick=()=>{storage.clearRole();customizeMode=false;roleLanding();window.scrollTo({top:0,behavior:'smooth'})};
     document.querySelector('[data-action="home"]').onclick=()=>currentAudience?renderDashboard():roleLanding();
