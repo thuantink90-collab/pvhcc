@@ -52,21 +52,68 @@ function menu(base) {
 }
 
 
-function parseCounters(env) {
-  // Có thể cấu hình trên Cloudflare:
-  // QUEUE_COUNTERS = 1|Quầy 1;2|Quầy 2;3|Quầy 3
-  const raw = String(env.QUEUE_COUNTERS || '').trim();
-  if (!raw) return [
-    { id:'1', name:'Quầy 1' },
-    { id:'2', name:'Quầy 2' },
-    { id:'3', name:'Quầy 3' }
-  ];
-  return raw.split(';').map((item, index) => {
-    const [id0, name0] = item.split('|');
-    const id = String(id0 || index + 1).trim();
-    const name = String(name0 || `Quầy ${id}`).trim();
-    return { id, name };
-  }).filter(x => x.id);
+async function loadCounters(env) {
+  // Ưu tiên lấy danh sách quầy trực tiếp từ API Apps Script của hệ thống xếp hàng.
+  // Cấu hình Cloudflare:
+  // QUEUE_APP_URL = https://script.google.com/macros/s/.../exec
+  // QUEUE_COUNTERS_ROUTE = counters   (không bắt buộc)
+  //
+  // API kỳ vọng một trong các dạng:
+  // {ok:true,data:[{id:"1",name:"Quầy 1"}]}
+  // {ok:true,counters:[...]}
+  // [{id:"1",name:"Quầy 1"}]
+  //
+  // Nếu API lỗi, fallback về QUEUE_COUNTERS rồi cuối cùng là Quầy 1-3.
+
+  const fallback = () => {
+    const raw = String(env.QUEUE_COUNTERS || '').trim();
+    if (raw) {
+      return raw.split(';').map((item, index) => {
+        const [id0, name0] = item.split('|');
+        const id = String(id0 || index + 1).trim();
+        const name = String(name0 || `Quầy ${id}`).trim();
+        return { id, name };
+      }).filter(x => x.id);
+    }
+    return [
+      { id:'1', name:'Quầy 1' },
+      { id:'2', name:'Quầy 2' },
+      { id:'3', name:'Quầy 3' }
+    ];
+  };
+
+  const base = String(env.QUEUE_APP_URL || '').trim();
+  if (!base) return fallback();
+
+  try {
+    const url = new URL(base);
+    url.searchParams.set('api', String(env.QUEUE_COUNTERS_ROUTE || 'counters'));
+    const r = await fetch(url.toString(), {
+      headers: {'accept':'application/json'},
+      cf: { cacheTtl: 300, cacheEverything: true }
+    });
+    if (!r.ok) return fallback();
+
+    const payload = await r.json();
+    let arr = Array.isArray(payload) ? payload
+      : Array.isArray(payload?.data) ? payload.data
+      : Array.isArray(payload?.counters) ? payload.counters
+      : [];
+
+    arr = arr.map((x, index) => {
+      if (typeof x === 'string') {
+        const id = String(index + 1);
+        return {id, name:x};
+      }
+      const id = String(x.id ?? x.counter ?? x.soQuay ?? x.code ?? index + 1).trim();
+      const name = String(x.name ?? x.ten ?? x.tenQuay ?? x.label ?? `Quầy ${id}`).trim();
+      return {id, name};
+    }).filter(x => x.id);
+
+    return arr.length ? arr : fallback();
+  } catch (e) {
+    return fallback();
+  }
 }
 
 function counterMenu(counters) {
@@ -179,7 +226,7 @@ export async function onRequest(context) {
   if (path === 'xep-hang/quay') {
     const incomingUrl = new URL(request.url);
     if (!incomingUrl.searchParams.get('counter')) {
-      return new Response(counterMenu(parseCounters(env)), {
+      return new Response(counterMenu(await loadCounters(env)), {
         headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=300'}
       });
     }
@@ -190,7 +237,7 @@ export async function onRequest(context) {
   if (path === 'xep-hang/hien-thi') {
     const incomingUrl = new URL(request.url);
     if (!incomingUrl.searchParams.get('counter')) {
-      return new Response(displayMenu(parseCounters(env)), {
+      return new Response(displayMenu(await loadCounters(env)), {
         headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=300'}
       });
     }
