@@ -64,9 +64,9 @@ function handbookMenu() {
   const paths = ['so-tay','so-tay/thu-tuc','so-tay/tra-cuu','so-tay/tro-ly','so-tay/quan-tri'];
   const icons = {
     'so-tay':'📘',
-    'so-tay/thu-tuc':'📚',
-    'so-tay/tra-cuu':'🔎',
-    'so-tay/tro-ly':'🤖',
+//    'so-tay/thu-tuc':'📚',
+//    'so-tay/tra-cuu':'🔎',
+//    'so-tay/tro-ly':'🤖',
     'so-tay/quan-tri':'⚙️'
   };
   const descriptions = {
