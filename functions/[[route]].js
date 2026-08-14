@@ -9,7 +9,7 @@ const ROUTES = {
 
   // Sổ tay điện tử TTHC
   // `page` có thể để rỗng: gateway sẽ mở Web App gốc.
-  'so-tay':             { app: 'handbook', page: '',          title: 'Sổ tay điện tử TTHC', access: 'public' },
+  'so-tay':             { app: 'handbook', view: '',          title: 'Sổ tay điện tử TTHC', access: 'public' },
   'so-tay/tra-cuu':     { app: 'handbook', page: 'search',    title: 'Tra cứu thủ tục', access: 'public' },
   'so-tay/thu-tuc':     { app: 'handbook', page: 'toc',       title: 'Danh mục thủ tục', access: 'public' },
   'so-tay/tro-ly':      { app: 'handbook', page: 'assistant', title: 'Trợ lý TTHC', access: 'public' },
