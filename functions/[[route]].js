@@ -5,7 +5,15 @@ const ROUTES = {
   'xep-hang/quay':     { page: 'staff',    title: 'Điều hành quầy', access: 'protected' },
   'xep-hang/hien-thi': { page: 'display',  title: 'Màn hình gọi số', access: 'public' },
   'xep-hang/danh-gia': { page: 'feedback', title: 'Đánh giá cán bộ', access: 'public' },
-  'xep-hang/admin':    { page: 'admin',    title: 'Quản trị xếp hàng', access: 'protected' }
+  'xep-hang/admin':    { page: 'admin',    title: 'Quản trị xếp hàng', access: 'protected' },
+
+  // Sổ tay điện tử TTHC
+  // `page` có thể để rỗng: gateway sẽ mở Web App gốc.
+  'so-tay':             { app: 'handbook', page: '',          title: 'Sổ tay điện tử TTHC', access: 'public' },
+  'so-tay/tra-cuu':     { app: 'handbook', page: 'search',    title: 'Tra cứu thủ tục', access: 'public' },
+  'so-tay/thu-tuc':     { app: 'handbook', page: 'toc',       title: 'Danh mục thủ tục', access: 'public' },
+  'so-tay/tro-ly':      { app: 'handbook', page: 'assistant', title: 'Trợ lý TTHC', access: 'public' },
+  'so-tay/quan-tri':    { app: 'handbook', page: 'admin',     title: 'Quản trị Sổ tay', access: 'protected' }
 };
 
 function esc(s='') {
@@ -46,9 +54,53 @@ setTimeout(()=>{l.style.display='none'},8000);
 }
 
 function menu(base) {
-  const items = Object.entries(ROUTES).map(([path,r]) =>
+  const items = Object.entries(ROUTES).filter(([path]) => path.startsWith('xep-hang/')).map(([path,r]) =>
     `<a href="/${path}"><b>${esc(r.title)}</b><small>/${path}</small></a>`).join('');
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hệ thống xếp hàng</title><style>body{font-family:Arial;background:#f4f7fb;margin:0;padding:28px;color:#17324d}.wrap{max-width:980px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}a{display:flex;flex-direction:column;gap:8px;text-decoration:none;color:#0b5fa5;background:white;padding:20px;border-radius:14px;border:1px solid #dce6ef;box-shadow:0 3px 12px #0000000a}small{color:#718096}</style></head><body><div class="wrap"><h1>Hệ thống xếp hàng tự động</h1><div class="grid">${items}</div></div></body></html>`;
+}
+
+
+function handbookMenu() {
+  const paths = ['so-tay','so-tay/thu-tuc','so-tay/tra-cuu','so-tay/tro-ly','so-tay/quan-tri'];
+  const icons = {
+    'so-tay':'📘',
+    'so-tay/thu-tuc':'📚',
+    'so-tay/tra-cuu':'🔎',
+    'so-tay/tro-ly':'🤖',
+    'so-tay/quan-tri':'⚙️'
+  };
+  const descriptions = {
+    'so-tay':'Mở Sổ tay điện tử hướng dẫn thủ tục hành chính.',
+    'so-tay/thu-tuc':'Xem lĩnh vực và danh mục thủ tục hành chính.',
+    'so-tay/tra-cuu':'Tìm nhanh thủ tục và nội dung hướng dẫn.',
+    'so-tay/tro-ly':'Hỏi đáp, hỗ trợ tra cứu thủ tục.',
+    'so-tay/quan-tri':'Quản lý dữ liệu và nội dung Sổ tay.'
+  };
+  const cards = paths.map(path => {
+    const r = ROUTES[path];
+    return `<a class="card" href="/${path}">
+      <span class="icon">${icons[path] || '📘'}</span>
+      <b>${esc(r.title)}</b>
+      <small>${esc(descriptions[path] || '')}</small>
+    </a>`;
+  }).join('');
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sổ tay điện tử TTHC | PVHCC Cô Tô</title>
+  <style>
+  *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;margin:0;color:#17324d}
+  header{background:linear-gradient(135deg,#075b9d,#0b76bd);color:#fff;padding:26px 20px}
+  .in,.wrap{max-width:1080px;margin:auto}.back{color:#dff2ff;text-decoration:none;font-size:14px}
+  h1{margin:12px 0 6px;font-size:27px}p{margin:0;color:#e8f5ff}
+  .wrap{padding:28px 20px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px}
+  .card{background:#fff;border:1px solid #d9e5ef;border-radius:16px;padding:22px;min-height:180px;text-decoration:none;color:#17324d;box-shadow:0 4px 14px #0000000a;transition:.18s}
+  .card:hover{transform:translateY(-3px);border-color:#70acd7;box-shadow:0 9px 24px rgba(11,95,165,.12)}
+  .icon{display:flex;width:54px;height:54px;align-items:center;justify-content:center;background:#eaf5fd;border-radius:14px;font-size:29px;margin-bottom:16px}
+  b{display:block;color:#0b5fa5;font-size:18px}small{display:block;color:#6c7e8f;line-height:1.45;margin-top:8px}
+  @media(max-width:600px){.grid{grid-template-columns:1fr 1fr;gap:10px}.card{padding:16px;min-height:165px}h1{font-size:23px}}
+  </style></head><body>
+  <header><div class="in"><a class="back" href="/">← Cổng điều phối</a><h1>Sổ tay điện tử TTHC</h1><p>Trung tâm Phục vụ Hành chính công</p></div></header>
+  <main class="wrap"><div class="grid">${cards}</div></main></body></html>`;
 }
 
 
@@ -214,15 +266,16 @@ export async function onRequest(context) {
   const arr = Array.isArray(params.route) ? params.route : [params.route].filter(Boolean);
   const path = arr.join('/').replace(/^\/+|\/+$/g,'');
 
-  // Không can thiệp các route khác của Portal.
-  if (!path.startsWith('xep-hang')) return context.next();
+  // Chỉ xử lý các ứng dụng đã gắn gateway.
+  if (!path.startsWith('xep-hang') && !path.startsWith('so-tay')) return context.next();
 
+  // ===== HỆ THỐNG XẾP HÀNG =====
   if (path === 'xep-hang') {
-    return new Response(menu(new URL(request.url).origin), {headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=300'}});
+    return new Response(menu(new URL(request.url).origin), {
+      headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=300'}
+    });
   }
 
-  // /xep-hang/quay không mở thẳng Apps Script nữa.
-  // Nếu chưa có ?counter=... thì hiển thị danh sách quầy để cán bộ lựa chọn.
   if (path === 'xep-hang/quay') {
     const incomingUrl = new URL(request.url);
     if (!incomingUrl.searchParams.get('counter')) {
@@ -232,8 +285,6 @@ export async function onRequest(context) {
     }
   }
 
-  // Màn hình hiển thị dùng CHUNG danh sách quầy với trang điều hành.
-  // Nếu chưa truyền counter thì cho chọn quầy trước.
   if (path === 'xep-hang/hien-thi') {
     const incomingUrl = new URL(request.url);
     if (!incomingUrl.searchParams.get('counter')) {
@@ -243,26 +294,41 @@ export async function onRequest(context) {
     }
   }
 
+  // ===== SỔ TAY ĐIỆN TỬ =====
+  // /so-tay là trang điều phối chức năng, còn /so-tay/mo mở thẳng ứng dụng.
+  if (path === 'so-tay') {
+    return new Response(handbookMenu(), {
+      headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=300'}
+    });
+  }
+
   const route = ROUTES[path];
   if (!route) return new Response('Không tìm thấy trang chức năng.', {status:404});
-
-  const baseUrl = String(env.QUEUE_APP_URL || '').trim();
-  if (!baseUrl) {
-    return new Response('Chưa cấu hình QUEUE_APP_URL trên Cloudflare.', {status:500});
-  }
 
   const requireAccess = String(env.REQUIRE_ACCESS || 'false').toLowerCase() === 'true';
   if (route.access === 'protected' && requireAccess && !accessEmail(request)) {
     return new Response('Trang này yêu cầu đăng nhập cán bộ qua Cloudflare Access.', {status:401});
   }
 
+  const isHandbook = route.app === 'handbook';
+  const baseUrl = String(isHandbook ? env.HANDBOOK_APP_URL : env.QUEUE_APP_URL || '').trim();
+
+  if (!baseUrl) {
+    return new Response(
+      isHandbook ? 'Chưa cấu hình HANDBOOK_APP_URL trên Cloudflare.' : 'Chưa cấu hình QUEUE_APP_URL trên Cloudflare.',
+      {status:500}
+    );
+  }
+
   const incoming = new URL(request.url);
   const target = new URL(baseUrl);
-  target.searchParams.set('page', route.page);
 
-  // Chuyển tiếp query string cần thiết: counter, services, ticket...
+  // Sổ tay: chỉ gắn page khi route có khai báo page.
+  // Route gốc của Apps Script vẫn được giữ nguyên nếu page rỗng.
+  if (route.page) target.searchParams.set('page', route.page);
+
   for (const [k,v] of incoming.searchParams.entries()) {
-    if (!['page'].includes(k)) target.searchParams.set(k,v);
+    if (k !== 'page') target.searchParams.set(k,v);
   }
 
   return new Response(htmlShell(target.toString(), route.title), {
