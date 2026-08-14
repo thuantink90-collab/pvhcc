@@ -13,7 +13,7 @@ const ROUTES = {
   'so-tay/tra-cuu':     { app: 'handbook', page: 'search',    title: 'Tra cứu thủ tục', access: 'public' },
   'so-tay/thu-tuc':     { app: 'handbook', page: 'toc',       title: 'Danh mục thủ tục', access: 'public' },
   'so-tay/tro-ly':      { app: 'handbook', page: 'assistant', title: 'Trợ lý TTHC', access: 'public' },
-  'so-tay/quan-tri':    { app: 'handbook', page: 'admin',     title: 'Quản trị Sổ tay', access: 'protected' }
+  'so-tay/quan-tri':    { app: 'handbook', view: 'admin',     title: 'Quản trị Sổ tay', access: 'protected' }
 };
 
 function esc(s='') {
