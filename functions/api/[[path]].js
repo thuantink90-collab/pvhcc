@@ -22,23 +22,27 @@ async function invalidatePublicCache(request){
   try{const cache=caches.default;await Promise.all(['apps','config','bootstrap'].map(p=>cache.delete(cacheRequestFor(request,p))));}catch(_){}
 }
 
+
+
+
+
 async function callGas(env, request, path, method0, session) {
 
-  const gasUrl =
+  const base =
     String(env.GAS_API_URL || '').trim();
 
   const secret =
     String(env.GAS_API_SECRET || '').trim();
 
-  if (!gasUrl) {
+  if (!base) {
     throw new Error(
-      'Chưa cấu hình GAS_API_URL trên Cloudflare.'
+      'Chưa cấu hình GAS_API_URL.'
     );
   }
 
   if (!secret) {
     throw new Error(
-      'Chưa cấu hình GAS_API_SECRET trên Cloudflare.'
+      'Chưa cấu hình GAS_API_SECRET.'
     );
   }
 
@@ -46,31 +50,45 @@ async function callGas(env, request, path, method0, session) {
   const incoming =
     new URL(request.url);
 
+  const target =
+    new URL(base);
 
-  const qs =
-    new URLSearchParams(incoming.search);
+
+  /*
+   * Giữ các tham số hiện có nếu cần.
+   */
+  incoming.searchParams.forEach(
+    (value, key) => {
+
+      if (
+        key !== 'route' &&
+        key !== 'key' &&
+        key !== 'session'
+      ) {
+        target.searchParams.set(
+          key,
+          value
+        );
+      }
+
+    }
+  );
 
 
-  qs.set(
+  target.searchParams.set(
     'route',
     path || 'apps'
   );
 
-  qs.set(
+  target.searchParams.set(
     'key',
     secret
   );
 
-  qs.set(
+  target.searchParams.set(
     'session',
     session || ''
   );
-
-
-  let target =
-    gasUrl +
-    (gasUrl.includes('?') ? '&' : '?') +
-    qs.toString();
 
 
   const method =
@@ -79,11 +97,11 @@ async function callGas(env, request, path, method0, session) {
       : method0;
 
 
-  let body = undefined;
-
+  let body = null;
 
   if (
-    !['GET', 'HEAD'].includes(method)
+    method !== 'GET' &&
+    method !== 'HEAD'
   ) {
 
     body =
@@ -91,106 +109,41 @@ async function callGas(env, request, path, method0, session) {
   }
 
 
-  function makeInit() {
+  const headers =
+    new Headers();
 
-    const headers = {
-      'Accept':
-        'application/json'
-    };
-
-
-    if (
-      !['GET', 'HEAD'].includes(method)
-    ) {
-
-      headers['Content-Type'] =
-        'application/json';
-    }
+  headers.set(
+    'Accept',
+    'application/json'
+  );
 
 
-    const init = {
-      method: method,
-      headers: headers,
-      redirect: 'manual'
-    };
-
-
-    if (
-      body !== undefined
-    ) {
-
-      init.body = body;
-    }
-
-
-    return init;
-  }
-
-
-  // ==================================================
-  // GỌI LẦN 1
-  // ==================================================
-
-  let response =
-    await fetch(
-      target,
-      makeInit()
-    );
-
-
-  // ==================================================
-  // XỬ LÝ REDIRECT APPS SCRIPT
-  // ==================================================
-
-  for (
-    let i = 0;
-    i < 3;
-    i++
+  if (
+    method !== 'GET' &&
+    method !== 'HEAD'
   ) {
 
-    if (
-      response.status !== 301 &&
-      response.status !== 302 &&
-      response.status !== 303 &&
-      response.status !== 307 &&
-      response.status !== 308
-    ) {
-
-      break;
-    }
-
-
-    const location =
-      response.headers.get(
-        'Location'
-      );
-
-
-    if (!location) {
-
-      throw new Error(
-        'Apps Script trả redirect nhưng không có Location.'
-      );
-    }
-
-
-    target =
-      new URL(
-        location,
-        target
-      ).toString();
-
-
-    // Giữ nguyên POST
-    response =
-      await fetch(
-        target,
-        makeInit()
-      );
+    headers.set(
+      'Content-Type',
+      'application/json'
+    );
   }
 
 
-  return response;
+  /*
+   * Apps Script Web App.
+   *
+   * Dùng redirect follow của Google.
+   */
+  return fetch(
+    target.toString(),
+    {
+      method,
+      headers,
+      body,
+      redirect: 'follow'
+    }
+  );
 }
 
 
