@@ -24,139 +24,177 @@ async function invalidatePublicCache(request){
 
 async function callGas(env, request, path, method0, session) {
 
-  let target = String(env.GAS_API_URL || '').trim();
+  const gasUrl =
+    String(env.GAS_API_URL || '').trim();
 
-  if (!target) {
-    throw new Error('Chưa cấu hình GAS_API_URL');
+  const secret =
+    String(env.GAS_API_SECRET || '').trim();
+
+  if (!gasUrl) {
+    throw new Error(
+      'Chưa cấu hình GAS_API_URL trên Cloudflare.'
+    );
   }
 
-  const incomingUrl = new URL(request.url);
+  if (!secret) {
+    throw new Error(
+      'Chưa cấu hình GAS_API_SECRET trên Cloudflare.'
+    );
+  }
 
-  const qs = new URLSearchParams(incomingUrl.search);
 
-  qs.set('route', path || 'apps');
-  qs.set('key', env.GAS_API_SECRET || '');
-  qs.set('session', session || '');
+  const incoming =
+    new URL(request.url);
 
-  target +=
-    (target.includes('?') ? '&' : '?') +
+
+  const qs =
+    new URLSearchParams(incoming.search);
+
+
+  qs.set(
+    'route',
+    path || 'apps'
+  );
+
+  qs.set(
+    'key',
+    secret
+  );
+
+  qs.set(
+    'session',
+    session || ''
+  );
+
+
+  let target =
+    gasUrl +
+    (gasUrl.includes('?') ? '&' : '?') +
     qs.toString();
+
 
   const method =
     method0 === 'DELETE'
       ? 'POST'
       : method0;
 
-  const headers = {
-    'Accept': 'application/json'
-  };
 
-  const init = {
-    method: method,
-    headers: headers,
+  let body = undefined;
 
-    // QUAN TRỌNG:
-    // Không để fetch tự đổi POST thành GET
-    // khi Apps Script trả redirect.
-    redirect: 'manual'
-  };
 
-  if (!['GET', 'HEAD'].includes(method)) {
+  if (
+    !['GET', 'HEAD'].includes(method)
+  ) {
 
-    headers['Content-Type'] =
-      'application/json';
-
-    init.body =
+    body =
       await request.text();
   }
 
 
+  function makeInit() {
+
+    const headers = {
+      'Accept':
+        'application/json'
+    };
+
+
+    if (
+      !['GET', 'HEAD'].includes(method)
+    ) {
+
+      headers['Content-Type'] =
+        'application/json';
+    }
+
+
+    const init = {
+      method: method,
+      headers: headers,
+      redirect: 'manual'
+    };
+
+
+    if (
+      body !== undefined
+    ) {
+
+      init.body = body;
+    }
+
+
+    return init;
+  }
+
+
   // ==================================================
-  // LẦN 1: gọi Apps Script
+  // GỌI LẦN 1
   // ==================================================
 
   let response =
-    await fetch(target, init);
+    await fetch(
+      target,
+      makeInit()
+    );
 
 
   // ==================================================
-  // Apps Script Web App thường trả 301/302/307/308
+  // XỬ LÝ REDIRECT APPS SCRIPT
   // ==================================================
 
-  if (
-    response.status === 301 ||
-    response.status === 302 ||
-    response.status === 303 ||
-    response.status === 307 ||
-    response.status === 308
+  for (
+    let i = 0;
+    i < 3;
+    i++
   ) {
 
+    if (
+      response.status !== 301 &&
+      response.status !== 302 &&
+      response.status !== 303 &&
+      response.status !== 307 &&
+      response.status !== 308
+    ) {
+
+      break;
+    }
+
+
     const location =
-      response.headers.get('Location');
+      response.headers.get(
+        'Location'
+      );
+
 
     if (!location) {
+
       throw new Error(
         'Apps Script trả redirect nhưng không có Location.'
       );
     }
 
 
-    // ==================================================
-    // QUAN TRỌNG:
-    // Gọi URL redirect bằng chính method POST
-    // thay vì để fetch tự đổi thành GET.
-    // ==================================================
-
-    const redirectedUrl =
+    target =
       new URL(
         location,
         target
       ).toString();
 
 
-    // body đã đọc ở trên nên phải lấy lại
-    let body = undefined;
-
-    if (!['GET', 'HEAD'].includes(method)) {
-
-      // request.text() chỉ đọc được một lần.
-      // Vì vậy ở các request POST chúng ta cần
-      // truyền body ngay từ đầu.
-      //
-      // Trường hợp này được xử lý bằng cách
-      // đọc lại từ init.body.
-      body = init.body;
-    }
-
-
-    const redirectedInit = {
-      method: method,
-      headers: {
-        ...headers
-      },
-      redirect: 'manual'
-    };
-
-
-    if (
-      body !== undefined &&
-      !['GET', 'HEAD'].includes(method)
-    ) {
-
-      redirectedInit.body = body;
-    }
-
-
+    // Giữ nguyên POST
     response =
       await fetch(
-        redirectedUrl,
-        redirectedInit
+        target,
+        makeInit()
       );
   }
 
 
   return response;
 }
+
+
+
 
 export async function onRequest(context){
   const {request,env,params}=context;
