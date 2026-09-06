@@ -22,21 +22,140 @@ async function invalidatePublicCache(request){
   try{const cache=caches.default;await Promise.all(['apps','config','bootstrap'].map(p=>cache.delete(cacheRequestFor(request,p))));}catch(_){}
 }
 
-async function callGas(env,request,path,method0,session){
-  let target=env.GAS_API_URL;
-  const url=new URL(request.url);
-  const qs=new URLSearchParams(url.search);
-  qs.set('route',path||'apps'); qs.set('key',env.GAS_API_SECRET);
-  qs.set('session',session||'');
-  target+=(target.includes('?')?'&':'?')+qs.toString();
-  const method=method0==='DELETE'?'POST':method0;
-  const headers={'Accept':'application/json'};
-  const init={method,headers,redirect:'follow'};
-  if(!['GET','HEAD'].includes(method)){
-    headers['Content-Type']='application/json';
-    init.body=await request.text();
+async function callGas(env, request, path, method0, session) {
+
+  let target = String(env.GAS_API_URL || '').trim();
+
+  if (!target) {
+    throw new Error('Chưa cấu hình GAS_API_URL');
   }
-  return fetch(target,init);
+
+  const incomingUrl = new URL(request.url);
+
+  const qs = new URLSearchParams(incomingUrl.search);
+
+  qs.set('route', path || 'apps');
+  qs.set('key', env.GAS_API_SECRET || '');
+  qs.set('session', session || '');
+
+  target +=
+    (target.includes('?') ? '&' : '?') +
+    qs.toString();
+
+  const method =
+    method0 === 'DELETE'
+      ? 'POST'
+      : method0;
+
+  const headers = {
+    'Accept': 'application/json'
+  };
+
+  const init = {
+    method: method,
+    headers: headers,
+
+    // QUAN TRỌNG:
+    // Không để fetch tự đổi POST thành GET
+    // khi Apps Script trả redirect.
+    redirect: 'manual'
+  };
+
+  if (!['GET', 'HEAD'].includes(method)) {
+
+    headers['Content-Type'] =
+      'application/json';
+
+    init.body =
+      await request.text();
+  }
+
+
+  // ==================================================
+  // LẦN 1: gọi Apps Script
+  // ==================================================
+
+  let response =
+    await fetch(target, init);
+
+
+  // ==================================================
+  // Apps Script Web App thường trả 301/302/307/308
+  // ==================================================
+
+  if (
+    response.status === 301 ||
+    response.status === 302 ||
+    response.status === 303 ||
+    response.status === 307 ||
+    response.status === 308
+  ) {
+
+    const location =
+      response.headers.get('Location');
+
+    if (!location) {
+      throw new Error(
+        'Apps Script trả redirect nhưng không có Location.'
+      );
+    }
+
+
+    // ==================================================
+    // QUAN TRỌNG:
+    // Gọi URL redirect bằng chính method POST
+    // thay vì để fetch tự đổi thành GET.
+    // ==================================================
+
+    const redirectedUrl =
+      new URL(
+        location,
+        target
+      ).toString();
+
+
+    // body đã đọc ở trên nên phải lấy lại
+    let body = undefined;
+
+    if (!['GET', 'HEAD'].includes(method)) {
+
+      // request.text() chỉ đọc được một lần.
+      // Vì vậy ở các request POST chúng ta cần
+      // truyền body ngay từ đầu.
+      //
+      // Trường hợp này được xử lý bằng cách
+      // đọc lại từ init.body.
+      body = init.body;
+    }
+
+
+    const redirectedInit = {
+      method: method,
+      headers: {
+        ...headers
+      },
+      redirect: 'manual'
+    };
+
+
+    if (
+      body !== undefined &&
+      !['GET', 'HEAD'].includes(method)
+    ) {
+
+      redirectedInit.body = body;
+    }
+
+
+    response =
+      await fetch(
+        redirectedUrl,
+        redirectedInit
+      );
+  }
+
+
+  return response;
 }
 
 export async function onRequest(context){
