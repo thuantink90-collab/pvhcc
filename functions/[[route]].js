@@ -99,6 +99,38 @@ function accessEmail(request) {
 }
 
 
+async function portalSessionInfo(env, request, permission) {
+  const token = cookieValue_(request, 'PVHCC_SESSION');
+  if (!token) return null;
+  if (!env.GAS_API_URL || !env.GAS_API_SECRET) return null;
+  try {
+    const u = new URL(env.GAS_API_URL);
+    u.searchParams.set('route','auth/me');
+    u.searchParams.set('key',env.GAS_API_SECRET);
+    u.searchParams.set('session',token);
+    const r = await fetch(u.toString(), {headers:{accept:'application/json'}});
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j.ok || !j.data?.authenticated) return null;
+    const user=j.data.user||{};
+    if (permission==='PORTAL_ADMIN' &&
+        String(user.role||'').toUpperCase()!=='SUPER_ADMIN' &&
+        !String(user.permissions||'').split(',').map(x=>x.trim().toUpperCase()).includes('PORTAL_ADMIN') &&
+        !String(user.permissions||'').split(',').map(x=>x.trim().toUpperCase()).includes('*')) return null;
+    return user;
+  } catch (_) { return null; }
+}
+function cookieValue_(request,name) {
+  const raw=request.headers.get('Cookie')||'';
+  const m=raw.match(new RegExp('(?:^|;\\s*)'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'=([^;]*)'));
+  return m?decodeURIComponent(m[1]):'';
+}
+function portalLoginPage_(nextPath) {
+  const p=esc(nextPath||'/admin');
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Đăng nhập quản trị</title><style>
+body{margin:0;background:#f4f7fb;font-family:Arial;color:#17324d;display:grid;place-items:center;min-height:100vh}.box{width:min(420px,calc(100% - 32px));background:#fff;border:1px solid #dce6ef;border-radius:18px;padding:28px;box-shadow:0 12px 40px #17324d18}h1{margin:0 0 6px;color:#075b9d;font-size:24px}p{color:#667788;font-size:14px}label{display:block;margin:16px 0 6px;font-weight:700}input{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ccd9e4;border-radius:10px;font-size:15px}button{width:100%;margin-top:20px;padding:12px;border:0;border-radius:10px;background:#0b6fae;color:#fff;font-weight:700;font-size:15px;cursor:pointer}.err{color:#b42318;margin-top:12px;min-height:20px}.back{display:inline-block;margin-top:16px;color:#0b6fae;text-decoration:none;font-size:14px}</style></head><body><form class="box" id="f"><h1>Đăng nhập quản trị</h1><p>Cổng điều phối Trung tâm Phục vụ Hành chính công đặc khu Cô Tô</p><label>Email</label><input id="e" type="email" required autocomplete="username"><label>Mật khẩu</label><input id="p" type="password" required autocomplete="current-password"><div class="err" id="err"></div><button>Đăng nhập</button><a class="back" href="/">← Về Cổng điều phối</a></form><script>f.onsubmit=async ev=>{ev.preventDefault();err.textContent='Đang kiểm tra...';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e.value,password:p.value})});const j=await r.json();if(!r.ok||!j.ok)throw Error(j.error||'Đăng nhập thất bại');location.href=${JSON.stringify(p)};}catch(x){err.textContent=x.message||'Đăng nhập thất bại';}};</script></body></html>`;
+}
+
 // =====================================================
 // IFRAME SHELL
 // =====================================================
