@@ -1485,14 +1485,61 @@ export async function onRequest(context) {
   // Chỉ xử lý các app đã đăng ký
   // ===================================================
 
-  if (
-    !path.startsWith('xep-hang') &&
-    !path.startsWith('so-tay')
-  ) {
+// ===================================================
+// CỔNG QUẢN TRỊ PORTAL
+// ===================================================
+//
+// /admin
+// /admin.html
+//
+// Bắt buộc đăng nhập tài khoản Portal_Users
+// ===================================================
 
-    return context.next();
+if (path === 'admin' || path === 'admin.html') {
+
+  const user =
+    await portalSessionInfo(
+      env,
+      request,
+      'PORTAL_ADMIN'
+    );
+
+  // Chưa đăng nhập hoặc không có quyền
+  if (!user) {
+
+    return new Response(
+      portalLoginPage_('/admin'),
+      {
+        status: 401,
+        headers: {
+          'content-type':
+            'text/html; charset=utf-8',
+
+          'cache-control':
+            'no-store'
+        }
+      }
+    );
 
   }
+
+  // Đã đăng nhập và có quyền
+  return context.next();
+}
+
+
+// ===================================================
+// CÁC ỨNG DỤNG KHÁC
+// ===================================================
+
+if (
+  !path.startsWith('xep-hang') &&
+  !path.startsWith('so-tay')
+) {
+
+  return context.next();
+
+}
 
 
   // ===================================================
